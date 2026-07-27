@@ -18,7 +18,7 @@ const rideWithMatchInclude = {
   match: { include: { acceptedBy: true } },
 } satisfies Prisma.RidePostInclude;
 
-type RideWithMatch = Prisma.RidePostGetPayload<{ include: typeof rideWithMatchInclude }>;
+export type RideWithMatch = Prisma.RidePostGetPayload<{ include: typeof rideWithMatchInclude }>;
 
 @Injectable()
 export class RidesService {
@@ -194,6 +194,23 @@ export class RidesService {
     }
 
     return this.getOne(user, id);
+  }
+
+  // Shared by chat/ratings/reports: fetches a ride post, scoped to the same community,
+  // and confirms the requesting user is actually one of its two participants.
+  async getForParticipant(user: User, id: string): Promise<RideWithMatch> {
+    const post = await this.findOrThrow(id);
+    this.assertSameCommunity(post, user);
+    this.assertParticipant(post, user.id);
+    return post;
+  }
+
+  otherParticipantId(post: RideWithMatch, viewerId: string): string {
+    const otherId = post.creatorId === viewerId ? post.match?.acceptedByUserId : post.creatorId;
+    if (!otherId) {
+      throw new BadRequestException('This ride has no other participant yet');
+    }
+    return otherId;
   }
 
   private async findOrThrow(id: string): Promise<RideWithMatch> {
