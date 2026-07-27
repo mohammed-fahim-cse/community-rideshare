@@ -26,7 +26,7 @@ requirements doc, section 10).
 ## Status
 
 - [x] Backend: DB schema + auth (signup / OTP / login)
-- [ ] Backend: Ride post CRUD + accept/cancel/status endpoints
+- [x] Backend: Ride post CRUD + accept/cancel/status endpoints
 - [ ] Backend: Chat + ratings + reports endpoints
 - [ ] Backend: WebSocket layer for live status/chat updates
 - [ ] Mobile app

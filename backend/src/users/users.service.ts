@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { toPublicUser } from '../common/users/public-user.util';
 
 @Injectable()
 export class UsersService {
@@ -16,14 +17,6 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Privacy: phone numbers hidden until a ride is accepted; only first name + photo in public view.
-    return {
-      id: user.id,
-      name: user.name?.split(' ')[0] ?? null,
-      photoUrl: user.photoUrl,
-      phone: user.phoneVisible ? user.phone : null,
-      ratingAvg: user.ratingAvg,
-      ratingCount: user.ratingCount,
-    };
+    return toPublicUser(user);
   }
 }

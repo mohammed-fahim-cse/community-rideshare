@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { RidesModule } from './rides/rides.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -11,6 +12,7 @@ import { AppController } from './app.controller';
     PrismaModule,
     AuthModule,
     UsersModule,
+    RidesModule,
   ],
   controllers: [AppController],
 })
