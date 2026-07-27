@@ -1,0 +1,6 @@
+{
+  "name": "web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "React + Vite admin dashboard — scaffolded after the backend API is ready. See repo README build order."
+}

@@ -1,0 +1,6 @@
+{
+  "name": "mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "React Native (Expo) app — scaffolded after the backend API is ready. See repo README build order."
+}

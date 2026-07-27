@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum RidePostType {
+  REQUEST
+  OFFER
+}
+
+enum RideMode {
+  ON_DEMAND
+  SCHEDULED
+}
+
+enum RidePostStatus {
+  OPEN
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  ACTIONED
+}
+
+model Community {
+  id               String   @id @default(uuid())
+  name             String
+  inviteCode       String   @unique
+  autoApprove      Boolean  @default(false)
+  matchingRadiusKm Float    @default(5)
+  createdAt        DateTime @default(now())
+
+  users User[]
+
+  @@map("communities")
+}
+
+model User {
+  id             String     @id @default(uuid())
+  name           String?
+  phone          String     @unique
+  photoUrl       String?
+  phoneVisible   Boolean    @default(false)
+  communityId    String
+  community      Community  @relation(fields: [communityId], references: [id])
+  ratingAvg      Float      @default(0)
+  ratingCount    Int        @default(0)
+  status         UserStatus @default(PENDING)
+  createdAt      DateTime   @default(now())
+
+  ridePosts        RidePost[]      @relation("CreatedRidePosts")
+  ridesAccepted    RideMatch[]     @relation("AcceptedMatches")
+  ratingsGiven     Rating[]        @relation("RatingsGiven")
+  ratingsReceived  Rating[]        @relation("RatingsReceived")
+  messagesSent     Message[]
+  reportsFiled     Report[]        @relation("ReportsFiled")
+  reportsReceived  Report[]        @relation("ReportsReceived")
+  devices          DeviceToken[]
+  blocksInitiated  Block[]         @relation("BlocksInitiated")
+  blocksReceived   Block[]         @relation("BlocksReceived")
+  otps             OtpCode[]
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("otp_codes")
+}
+
+model RidePost {
+  id                  String         @id @default(uuid())
+  type                RidePostType
+  mode                RideMode
+  creatorId           String
+  creator             User           @relation("CreatedRidePosts", fields: [creatorId], references: [id])
+  pickupLat           Float
+  pickupLng           Float
+  pickupAddress       String
+  destinationLat      Float
+  destinationLng      Float
+  destinationAddress  String
+  scheduledTime       DateTime?
+  seatsAvailable      Int?
+  suggestedFare       Float?
+  status              RidePostStatus @default(OPEN)
+  createdAt           DateTime       @default(now())
+
+  match RideMatch?
+
+  @@index([status, mode])
+  @@map("ride_posts")
+}
+
+model RideMatch {
+  id              String    @id @default(uuid())
+  ridePostId      String    @unique
+  ridePost        RidePost  @relation(fields: [ridePostId], references: [id])
+  acceptedByUserId String
+  acceptedBy      User      @relation("AcceptedMatches", fields: [acceptedByUserId], references: [id])
+  acceptedAt      DateTime  @default(now())
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+
+  ratings  Rating[]
+  messages Message[]
+  reports  Report[]
+
+  @@map("ride_matches")
+}
+
+model Rating {
+  id           String    @id @default(uuid())
+  rideMatchId  String
+  rideMatch    RideMatch @relation(fields: [rideMatchId], references: [id])
+  raterId      String
+  rater        User      @relation("RatingsGiven", fields: [raterId], references: [id])
+  ratedUserId  String
+  ratedUser    User      @relation("RatingsReceived", fields: [ratedUserId], references: [id])
+  stars        Int
+  comment      String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([rideMatchId, raterId])
+  @@map("ratings")
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  rideMatchId String
+  rideMatch   RideMatch @relation(fields: [rideMatchId], references: [id])
+  senderId    String
+  sender      User      @relation(fields: [senderId], references: [id])
+  text        String
+  sentAt      DateTime  @default(now())
+
+  @@index([rideMatchId])
+  @@map("messages")
+}
+
+model Report {
+  id              String       @id @default(uuid())
+  reporterId      String
+  reporter        User         @relation("ReportsFiled", fields: [reporterId], references: [id])
+  reportedUserId  String
+  reportedUser    User         @relation("ReportsReceived", fields: [reportedUserId], references: [id])
+  reason          String
+  rideMatchId     String?
+  rideMatch       RideMatch?   @relation(fields: [rideMatchId], references: [id])
+  status          ReportStatus @default(OPEN)
+  createdAt       DateTime     @default(now())
+
+  @@map("reports")
+}
+
+model Block {
+  id           String   @id @default(uuid())
+  blockerId    String
+  blocker      User     @relation("BlocksInitiated", fields: [blockerId], references: [id])
+  blockedId    String
+  blocked      User     @relation("BlocksReceived", fields: [blockedId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@map("blocks")
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@map("device_tokens")
+}
