@@ -320,6 +320,7 @@
   .gate.locked { color: var(--patch); border-color: var(--patch); }
   .gate.member { color: var(--delete); border-color: var(--delete); }
   .gate.open { color: var(--post); border-color: var(--post); }
+  .gate.admin { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
 
   /* schema card */
   .schema {
@@ -535,18 +536,20 @@
       <li><a href="#chat"><span>Chat</span><span class="n">2</span></a></li>
       <li><a href="#reports"><span>Reports</span><span class="n">1</span></a></li>
       <li><a href="#blocks"><span>Blocks</span><span class="n">3</span></a></li>
+      <li><a href="#admin"><span>Admin</span><span class="n">4</span></a></li>
+      <li><a href="#notifications"><span>Notifications</span><span class="n">1</span></a></li>
       <li><a href="#realtime"><span>Realtime</span><span class="n">ws</span></a></li>
     </ul>
     <p class="toc-label">Build status</p>
     <p style="font-family:var(--font-mono); font-size:12px; color:var(--slate); line-height:1.7;">
-      Steps 1–4 of 11 complete.<br>Backend only — no mobile/web client yet.
+      Steps 1–4 of 11 complete,<br>plus admin + notifications.<br>Backend only — no mobile/web client yet.
     </p>
   </nav>
 
   <main>
     <div class="intro">
-      <h1>20 endpoints, one dispatch board.</h1>
-      <p>Everything the backend exposes today: phone/OTP auth, ride posting and matching, chat, ratings, reports, blocks, and the Socket.io events that keep clients live. Every shape below reflects the actual DTOs and service code — not a spec draft.</p>
+      <h1>25 endpoints, one dispatch board.</h1>
+      <p>Everything the backend exposes today: phone/OTP auth, ride posting and matching, chat, ratings, reports, blocks, admin moderation, device registration, and the Socket.io events that keep clients live. Every shape below reflects the actual DTOs and service code — not a spec draft.</p>
       <div class="rule">
         <span><strong>Auth</strong> — Bearer JWT from <code>verify-otp</code></span>
         <span><strong>Format</strong> — JSON in, JSON out</span>
@@ -908,6 +911,94 @@
       </div>
     </section>
 
+    <!-- ADMIN -->
+    <section class="module" id="admin">
+      <div class="module-head">
+        <h2>Admin</h2>
+        <p>Membership queue and report actions — scoped to the admin's own community</p>
+        <span class="gate admin">Role: admin</span>
+      </div>
+
+      <div class="schema">
+        <p class="schema-label">Becoming an admin</p>
+        <p style="margin-top:0;">There's no signup flow for admins yet. A member is promoted from the command line: <code>npm run prisma:make-admin -w backend -- &lt;phone&gt;</code>. Every endpoint below additionally requires <code>status: ACTIVE</code>.</p>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method get">GET</span>
+          <span class="path" data-copy="/admin/members?status=PENDING">/admin/members<span class="copy-hint">copy</span></span>
+          <span class="endpoint-note">membership queue</span>
+        </div>
+        <div class="endpoint-body">
+          <table class="kv">
+            <tr><th>status</th><td>defaults to <code>PENDING</code> — the usual queue</td></tr>
+          </table>
+          <dl class="field"><dt>200</dt><dd class="muted">array of full user rows in the admin's community, oldest first</dd></dl>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method post">POST</span>
+          <span class="path" data-copy="/admin/members/:id/approve">/admin/members/:id/approve<span class="copy-hint">copy</span></span>
+        </div>
+        <div class="endpoint-body">
+          <dl class="field"><dt>200</dt><dd class="muted">member row — status <code>PENDING → ACTIVE</code></dd></dl>
+          <div class="errs"><span><b>404</b> not in your community</span><span><b>409</b> not currently PENDING</span></div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method get">GET</span>
+          <span class="path" data-copy="/admin/reports?status=OPEN">/admin/reports<span class="copy-hint">copy</span></span>
+          <span class="endpoint-note">reports queue</span>
+        </div>
+        <div class="endpoint-body">
+          <table class="kv">
+            <tr><th>status</th><td>defaults to <code>OPEN</code></td></tr>
+          </table>
+          <dl class="field"><dt>200</dt><dd><pre>[{ "id", "reporterId", "reportedUserId", "reason", "rideMatchId", "status", "createdAt",
+  "reporter": { "id", "name", "phone" },
+  "reportedUser": { "id", "name", "phone", "status" } }]</pre></dd></dl>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method post">POST</span>
+          <span class="path" data-copy="/admin/reports/:id/action">/admin/reports/:id/action<span class="copy-hint">copy</span></span>
+        </div>
+        <div class="endpoint-body">
+          <dl class="field"><dt>Input</dt><dd><pre>{ "action": "WARN" | "SUSPEND" | "REMOVE" | "DISMISS" }</pre></dd></dl>
+          <dl class="field"><dt>200</dt><dd class="muted">updated report — <code>DISMISS → REVIEWED</code>, everything else <code>→ ACTIONED</code></dd></dl>
+          <dl class="field"><dt>Side effect</dt><dd class="muted"><code>SUSPEND</code> / <code>REMOVE</code> also set the reported member's status to <code>SUSPENDED</code> — there's no separate "removed" account state yet. <code>WARN</code> only marks the report actioned.</dd></dl>
+          <div class="errs"><span><b>404</b> not in your community</span><span><b>409</b> report already reviewed/actioned</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTIFICATIONS -->
+    <section class="module" id="notifications">
+      <div class="module-head">
+        <h2>Notifications</h2>
+        <p>Device registration only — no push provider wired up yet</p>
+        <span class="gate locked">Bearer token</span>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method post">POST</span>
+          <span class="path" data-copy="/notifications/register-device">/notifications/register-device<span class="copy-hint">copy</span></span>
+        </div>
+        <div class="endpoint-body">
+          <dl class="field"><dt>Input</dt><dd><pre>{ "token": string, "platform": "ios" | "android" | "web" }</pre></dd></dl>
+          <dl class="field"><dt>201</dt><dd><pre>{ "message": "Device registered" }</pre></dd></dl>
+          <dl class="field"><dt>Note</dt><dd class="muted">upserts by <code>token</code> — the same device re-registering (app restart, different member logging in) moves the token instead of duplicating it. No <code>ActiveUserGuard</code>: even a pending member can register, so they can be notified once approved.</dd></dl>
+        </div>
+      </div>
+    </section>
+
     <!-- REALTIME -->
     <section class="module" id="realtime">
       <div class="module-head">
@@ -934,7 +1025,7 @@
 </div>
 
 <footer>
-  <span>community-rideshare / backend — build steps 1–4 of 11</span>
+  <span>community-rideshare / backend — build steps 1–4 of 11, plus admin + notifications</span>
   <span>generated from src/*.controller.ts + *.dto.ts</span>
 </footer>
 
