@@ -2,6 +2,8 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { RidePostStatus, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RidesService, RideWithMatch } from '../rides/rides.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { ChatEvents } from '../realtime/events';
 import { CreateMessageDto } from './dto/create-message.dto';
 
 const CHAT_ARCHIVE_HOURS = 24;
@@ -11,6 +13,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rides: RidesService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async listMessages(user: User, rideId: string) {
@@ -27,9 +30,14 @@ export class ChatService {
       throw new ForbiddenException('Chat is closed for this ride');
     }
 
-    return this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: { rideMatchId: post.match!.id, senderId: user.id, text: dto.text },
     });
+
+    const recipientId = this.rides.otherParticipantId(post, user.id);
+    this.realtime.emitToUser(recipientId, ChatEvents.NEW_MESSAGE, message);
+
+    return message;
   }
 
   private async getAcceptedRideOrThrow(user: User, rideId: string): Promise<RideWithMatch> {

@@ -38,6 +38,33 @@ Phone + OTP, no passwords:
 No SMS provider is wired up yet — OTP codes are logged to the console (see
 `src/common/otp/otp.service.ts`). Swap in Twilio (or similar) there when ready.
 
+## Real-time (Socket.io)
+
+Connect authenticated, at `http://localhost:3000` (default `/socket.io` path), passing the JWT
+from `verify-otp` in the handshake:
+
+```js
+io('http://localhost:3000', { auth: { token: accessToken } });
+```
+
+On connect the server joins the socket to two rooms: one private to the user
+(`user:<userId>`) and one shared by their whole community (`community:<communityId>`). An
+invalid or missing token disconnects the socket immediately.
+
+Events emitted by the server:
+
+| Event | Room | Payload | When |
+|---|---|---|---|
+| `ride:new` | community | ride post (no phone numbers) | a new OPEN ride post is created |
+| `ride:taken` | community | `{ rideId }` | a ride post is accepted, so others should drop it from their feed |
+| `ride:accepted` | creator | full ride post + match | someone accepts the creator's post |
+| `ride:arrived` | the other participant | full ride post + match | the driver marks arrival |
+| `ride:completed` | the other participant | full ride post + match | either party marks the ride complete |
+| `ride:cancelled` | the other participant (full details) + community (`{ rideId }`) | see above | a ride is cancelled after acceptance |
+| `message:new` | recipient | chat message | a chat message is sent on an accepted ride |
+
+There's no client library in this repo yet — the mobile app step will add `socket.io-client`.
+
 ## Seeding a community
 
 Until admin endpoints exist, run the seed script to create a demo community and invite code:

@@ -9,6 +9,8 @@ import { Prisma, RidePostStatus, RidePostType, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicUser } from '../common/users/public-user.util';
 import { haversineKm } from '../common/geo/haversine';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RideEvents } from '../realtime/events';
 import { CreateRidePostDto } from './dto/create-ride-post.dto';
 import { ListRidesDto } from './dto/list-rides.dto';
 import { CancelRideDto } from './dto/cancel-ride.dto';
@@ -22,7 +24,10 @@ export type RideWithMatch = Prisma.RidePostGetPayload<{ include: typeof rideWith
 
 @Injectable()
 export class RidesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeGateway,
+  ) {}
 
   async create(user: User, dto: CreateRidePostDto) {
     const post = await this.prisma.ridePost.create({
@@ -42,6 +47,9 @@ export class RidesService {
       },
       include: rideWithMatchInclude,
     });
+
+    // Broadcast with viewerId=null so nobody's phone leaks to the whole community feed.
+    this.realtime.emitToCommunity(user.communityId, RideEvents.NEW, this.shape(post, null));
 
     return this.shape(post, user.id);
   }
@@ -120,7 +128,11 @@ export class RidesService {
       data: { ridePostId: id, acceptedByUserId: user.id },
     });
 
-    return this.getOne(user, id);
+    const updated = await this.getOne(user, id);
+    // Both participants see the same (fully revealed) shape, so this is valid for the creator too.
+    this.realtime.emitToUser(post.creatorId, RideEvents.ACCEPTED, updated);
+    this.realtime.emitToCommunity(user.communityId, RideEvents.TAKEN, { rideId: id });
+    return updated;
   }
 
   async arrived(user: User, id: string) {
@@ -142,7 +154,9 @@ export class RidesService {
       this.prisma.rideMatch.update({ where: { id: post.match.id }, data: { arrivedAt: new Date() } }),
     ]);
 
-    return this.getOne(user, id);
+    const updated = await this.getOne(user, id);
+    this.realtime.emitToUser(this.otherParticipantId(post, user.id), RideEvents.ARRIVED, updated);
+    return updated;
   }
 
   async complete(user: User, id: string) {
@@ -162,7 +176,9 @@ export class RidesService {
       this.prisma.rideMatch.update({ where: { id: post.match.id }, data: { completedAt: new Date() } }),
     ]);
 
-    return this.getOne(user, id);
+    const updated = await this.getOne(user, id);
+    this.realtime.emitToUser(this.otherParticipantId(post, user.id), RideEvents.COMPLETED, updated);
+    return updated;
   }
 
   async cancel(user: User, id: string, dto: CancelRideDto) {
@@ -172,6 +188,8 @@ export class RidesService {
     if (post.status === RidePostStatus.COMPLETED || post.status === RidePostStatus.CANCELLED) {
       throw new ConflictException(`Cannot cancel a ride that is already ${post.status.toLowerCase()}`);
     }
+
+    let otherParticipantId: string | undefined;
 
     if (!post.match) {
       if (post.creatorId !== user.id) {
@@ -183,7 +201,7 @@ export class RidesService {
       if (!dto.reason?.trim()) {
         throw new BadRequestException('A cancellation reason is required once a ride has been accepted');
       }
-      // TODO: notify the other party immediately once the notifications module exists (doc section 3.8).
+      otherParticipantId = this.otherParticipantId(post, user.id);
       await this.prisma.$transaction([
         this.prisma.ridePost.update({ where: { id }, data: { status: RidePostStatus.CANCELLED } }),
         this.prisma.rideMatch.update({
@@ -193,7 +211,13 @@ export class RidesService {
       ]);
     }
 
-    return this.getOne(user, id);
+    const updated = await this.getOne(user, id);
+    if (otherParticipantId) {
+      // "Notifies the other party immediately" (doc section 3.4, step 5).
+      this.realtime.emitToUser(otherParticipantId, RideEvents.CANCELLED, updated);
+    }
+    this.realtime.emitToCommunity(user.communityId, RideEvents.CANCELLED, { rideId: id });
+    return updated;
   }
 
   // Shared by chat/ratings/reports: fetches a ride post, scoped to the same community,
@@ -259,8 +283,9 @@ export class RidesService {
     return post.type === RidePostType.REQUEST ? post.match?.acceptedByUserId : post.creatorId;
   }
 
-  private shape(post: RideWithMatch, viewerId: string) {
-    const isParticipant = viewerId === post.creatorId || viewerId === post.match?.acceptedByUserId;
+  private shape(post: RideWithMatch, viewerId: string | null) {
+    const isParticipant =
+      viewerId !== null && (viewerId === post.creatorId || viewerId === post.match?.acceptedByUserId);
 
     return {
       id: post.id,
