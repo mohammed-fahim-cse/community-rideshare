@@ -29,5 +29,6 @@ requirements doc, section 10).
 - [x] Backend: Ride post CRUD + accept/cancel/status endpoints
 - [x] Backend: Chat + ratings + reports endpoints
 - [x] Backend: WebSocket layer for live status/chat updates
+- [x] Backend: admin endpoints (member approval, report actions) + device registration
 - [ ] Mobile app
 - [ ] Web admin dashboard

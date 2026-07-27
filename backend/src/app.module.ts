@@ -8,6 +8,8 @@ import { RatingsModule } from './ratings/ratings.module';
 import { ChatModule } from './chat/chat.module';
 import { ReportsModule } from './reports/reports.module';
 import { BlocksModule } from './blocks/blocks.module';
+import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -21,6 +23,8 @@ import { AppController } from './app.controller';
     ChatModule,
     ReportsModule,
     BlocksModule,
+    AdminModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
 })

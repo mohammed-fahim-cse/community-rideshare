@@ -65,9 +65,34 @@ Events emitted by the server:
 
 There's no client library in this repo yet — the mobile app step will add `socket.io-client`.
 
+## Admin
+
+Members have a `role` of `MEMBER` or `ADMIN`. There's no signup flow for admins — promote an
+existing member from the command line:
+```
+npm run prisma:make-admin -w backend -- <phone>
+```
+
+Admin-only endpoints (require `role: ADMIN` and `status: ACTIVE`), scoped to the admin's own
+community:
+
+- `GET /admin/members?status=PENDING` — membership queue (`status` defaults to `PENDING`)
+- `POST /admin/members/:id/approve` — `PENDING` → `ACTIVE`
+- `GET /admin/reports?status=OPEN` — reports against members in your community (`status` defaults to `OPEN`)
+- `POST /admin/reports/:id/action` `{ action: "WARN" | "SUSPEND" | "REMOVE" | "DISMISS" }` —
+  `SUSPEND`/`REMOVE` also set the reported member's status to `SUSPENDED` (there's no separate
+  "removed" account state yet); `DISMISS` closes the report with no action taken.
+
+## Notifications
+
+`POST /notifications/register-device` `{ token, platform: "ios" | "android" | "web" }` — upserts
+a device token by `token`, so the same physical device re-registering (app restart, different
+member logging in) moves the token rather than duplicating it. This only stores the token — no
+push provider (FCM) is wired up yet; that lands with the mobile app.
+
 ## Seeding a community
 
-Until admin endpoints exist, run the seed script to create a demo community and invite code:
+Run the seed script to create a demo community and invite code:
 ```
 npm run prisma:seed -w backend
 ```

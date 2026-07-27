@@ -13,6 +13,11 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
 enum RidePostType {
   REQUEST
   OFFER
@@ -61,6 +66,7 @@ model User {
   ratingAvg      Float      @default(0)
   ratingCount    Int        @default(0)
   status         UserStatus @default(PENDING)
+  role           UserRole   @default(MEMBER)
   createdAt      DateTime   @default(now())
 
   ridePosts        RidePost[]      @relation("CreatedRidePosts")
