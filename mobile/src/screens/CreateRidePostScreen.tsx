@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../auth/AuthContext';
@@ -11,6 +11,7 @@ import { TextField } from '../components/TextField';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { CashDisclaimer } from '../components/CashDisclaimer';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'CreateRidePost'>;
 
@@ -191,10 +192,9 @@ export default function CreateRidePostScreen({ navigation }: Props) {
           onChangeText={setSuggestedFare}
         />
 
-        <Text style={styles.disclaimer}>
-          Payment is handled directly in cash between members. Community RideShare does not process, hold, or
-          guarantee any payment.
-        </Text>
+        <View style={styles.disclaimerWrap}>
+          <CashDisclaimer />
+        </View>
 
         <PrimaryButton title="Post ride" onPress={handleSubmit} loading={submitting} disabled={!canSubmit} />
       </ScrollView>
@@ -206,5 +206,5 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#fff' },
   container: { padding: 24, paddingBottom: 48 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginTop: 16, marginBottom: 8 },
-  disclaimer: { fontSize: 12, color: '#6b7280', marginVertical: 16, lineHeight: 18 },
+  disclaimerWrap: { marginVertical: 16 },
 });

@@ -1,7 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { RidePost } from '../api/types';
-import { PrimaryButton } from './PrimaryButton';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -10,13 +9,12 @@ function formatDateTime(iso: string): string {
 
 interface Props {
   ride: RidePost;
-  onAccept: () => void;
-  accepting?: boolean;
+  onPress: () => void;
 }
 
-export function RideCard({ ride, onAccept, accepting }: Props) {
+export function RideCard({ ride, onPress }: Props) {
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.row}>
         <Text style={styles.badge}>{ride.type === 'REQUEST' ? 'Request' : 'Offer'}</Text>
         <Text style={styles.scheduled}>
@@ -40,9 +38,7 @@ export function RideCard({ ride, onAccept, accepting }: Props) {
           {ride.seatsAvailable} seat{ride.seatsAvailable === 1 ? '' : 's'} available
         </Text>
       ) : null}
-
-      <PrimaryButton title="Accept" onPress={onAccept} loading={accepting} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -52,7 +48,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 12,
     padding: 14,
-    gap: 8,
+    gap: 6,
     marginBottom: 12,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

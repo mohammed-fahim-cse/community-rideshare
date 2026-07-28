@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../auth/AuthContext';
 import { useSocket } from '../realtime/SocketContext';
-import { acceptRide, listRides } from '../api/rides';
+import { listRides } from '../api/rides';
 import { ApiError } from '../api/client';
 import type { RidePost, RidePostType } from '../api/types';
 import { RideCard } from '../components/RideCard';
@@ -20,7 +20,6 @@ export default function HomeScreen({ navigation }: Props) {
   const [rides, setRides] = useState<RidePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -94,23 +93,26 @@ export default function HomeScreen({ navigation }: Props) {
     };
   }, [socket, type]);
 
+  // ride:accepted is only ever sent to the creator's own room, so receiving it here
+  // always means "someone accepted one of my own posts" — the only way a creator finds
+  // out, since their own posts never show up in their own feed.
+  useEffect(() => {
+    if (!socket) return;
+    const onAccepted = (ride: RidePost) => {
+      Alert.alert('Your ride was accepted', `${ride.match?.acceptedBy.name ?? 'A member'} is on it.`, [
+        { text: 'Later', style: 'cancel' },
+        { text: 'View', onPress: () => navigation.navigate('ActiveRide', { ride }) },
+      ]);
+    };
+    socket.on('ride:accepted', onAccepted);
+    return () => {
+      socket.off('ride:accepted', onAccepted);
+    };
+  }, [socket, navigation]);
+
   const handleRefresh = () => {
     setRefreshing(true);
     fetchRides();
-  };
-
-  const handleAccept = async (ride: RidePost) => {
-    if (!accessToken) return;
-    setAcceptingId(ride.id);
-    try {
-      await acceptRide(accessToken, ride.id);
-      setRides((prev) => prev.filter((r) => r.id !== ride.id));
-      Alert.alert('Ride accepted', "You're matched — coordinating pickup is next.");
-    } catch (err) {
-      Alert.alert('Could not accept', err instanceof ApiError ? err.message : 'Please try again.');
-    } finally {
-      setAcceptingId(null);
-    }
   };
 
   return (
@@ -137,7 +139,7 @@ export default function HomeScreen({ navigation }: Props) {
           data={rides}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <RideCard ride={item} onAccept={() => handleAccept(item)} accepting={acceptingId === item.id} />
+            <RideCard ride={item} onPress={() => navigation.navigate('RideDetail', { rideId: item.id })} />
           )}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}

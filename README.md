@@ -32,6 +32,6 @@ requirements doc, section 10).
 - [x] Backend: admin endpoints (member approval, report actions) + device registration
 - [x] Mobile: auth flow + community join (Expo, `mobile/`)
 - [x] Mobile: home feed + create ride post (map view deferred — see mobile/README.md)
-- [ ] Mobile: ride detail, accept flow, active ride tracker
+- [x] Mobile: ride detail, accept flow, active ride tracker
 - [ ] Mobile: chat, ratings, history, profile, notifications
 - [ ] Web admin dashboard

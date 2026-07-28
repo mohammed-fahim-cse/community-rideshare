@@ -3,12 +3,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthContext';
+import type { RidePost } from '../api/types';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 import LoginScreen from '../screens/LoginScreen';
 import VerifyOtpScreen from '../screens/VerifyOtpScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CreateRidePostScreen from '../screens/CreateRidePostScreen';
+import RideDetailScreen from '../screens/RideDetailScreen';
+import ActiveRideScreen from '../screens/ActiveRideScreen';
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -20,6 +23,8 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   Home: undefined;
   CreateRidePost: undefined;
+  RideDetail: { rideId: string };
+  ActiveRide: { ride: RidePost };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -46,6 +51,8 @@ export function RootNavigator() {
             component={CreateRidePostScreen}
             options={{ title: 'Post a ride', presentation: 'modal' }}
           />
+          <AppStack.Screen name="RideDetail" component={RideDetailScreen} options={{ title: 'Ride details' }} />
+          <AppStack.Screen name="ActiveRide" component={ActiveRideScreen} />
         </AppStack.Navigator>
       ) : (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>
