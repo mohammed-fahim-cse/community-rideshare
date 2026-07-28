@@ -8,6 +8,7 @@ import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 import LoginScreen from '../screens/LoginScreen';
 import VerifyOtpScreen from '../screens/VerifyOtpScreen';
 import HomeScreen from '../screens/HomeScreen';
+import CreateRidePostScreen from '../screens/CreateRidePostScreen';
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -18,6 +19,7 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   Home: undefined;
+  CreateRidePost: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -39,6 +41,11 @@ export function RootNavigator() {
       {status === 'signedIn' ? (
         <AppStack.Navigator>
           <AppStack.Screen name="Home" component={HomeScreen} options={{ title: 'Community RideShare' }} />
+          <AppStack.Screen
+            name="CreateRidePost"
+            component={CreateRidePostScreen}
+            options={{ title: 'Post a ride', presentation: 'modal' }}
+          />
         </AppStack.Navigator>
       ) : (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>

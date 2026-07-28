@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Community RideShare uses your location to find nearby rides and set your pickup point."
+        }
+      ]
+    ]
   }
 }

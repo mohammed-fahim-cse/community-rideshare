@@ -1,37 +1,163 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import * as Location from 'expo-location';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../auth/AuthContext';
-import { PrimaryButton } from '../components/PrimaryButton';
+import { useSocket } from '../realtime/SocketContext';
+import { acceptRide, listRides } from '../api/rides';
+import { ApiError } from '../api/client';
+import type { RidePost, RidePostType } from '../api/types';
+import { RideCard } from '../components/RideCard';
+import { SegmentedControl } from '../components/SegmentedControl';
 
-export default function HomeScreen() {
-  const { user, logout } = useAuth();
+type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
+
+export default function HomeScreen({ navigation }: Props) {
+  const { user, accessToken, logout } = useAuth();
+  const socket = useSocket();
+  const [type, setType] = useState<RidePostType>('REQUEST');
+  const [rides, setRides] = useState<RidePost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <Pressable onPress={logout} hitSlop={8}>
+          <Text style={styles.headerLink}>Log out</Text>
+        </Pressable>
+      ),
+      headerRight: () => (
+        <Pressable onPress={() => navigation.navigate('CreateRidePost')} hitSlop={8}>
+          <Text style={styles.headerLink}>+ New</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, logout]);
+
+  // Best-effort: the feed still works community-wide if location is denied or unavailable.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const position = await Location.getCurrentPositionAsync({});
+        setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+      } catch {
+        // Ignore — fall back to the unfiltered community feed.
+      }
+    })();
+  }, []);
+
+  const fetchRides = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const data = await listRides(accessToken, { type, near: coords ?? undefined });
+      setRides(data);
+    } catch (err) {
+      Alert.alert('Could not load rides', err instanceof ApiError ? err.message : 'Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [accessToken, type, coords]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchRides();
+  }, [fetchRides]);
+
+  // Live feed updates: a post appears the moment someone else posts it, and disappears
+  // the moment it's taken or cancelled, without waiting for a manual refresh.
+  useEffect(() => {
+    if (!socket) return;
+
+    const onNew = (post: RidePost) => {
+      if (post.type !== type) return;
+      setRides((prev) => (prev.some((r) => r.id === post.id) ? prev : [post, ...prev]));
+    };
+    const onRemoved = ({ rideId }: { rideId: string }) => {
+      setRides((prev) => prev.filter((r) => r.id !== rideId));
+    };
+
+    socket.on('ride:new', onNew);
+    socket.on('ride:taken', onRemoved);
+    socket.on('ride:cancelled', onRemoved);
+
+    return () => {
+      socket.off('ride:new', onNew);
+      socket.off('ride:taken', onRemoved);
+      socket.off('ride:cancelled', onRemoved);
+    };
+  }, [socket, type]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchRides();
+  };
+
+  const handleAccept = async (ride: RidePost) => {
+    if (!accessToken) return;
+    setAcceptingId(ride.id);
+    try {
+      await acceptRide(accessToken, ride.id);
+      setRides((prev) => prev.filter((r) => r.id !== ride.id));
+      Alert.alert('Ride accepted', "You're matched — coordinating pickup is next.");
+    } catch (err) {
+      Alert.alert('Could not accept', err instanceof ApiError ? err.message : 'Please try again.');
+    } finally {
+      setAcceptingId(null);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <View>
-        <Text style={styles.title}>You're in.</Text>
-        <Text style={styles.subtitle}>{user?.name ?? user?.phone}</Text>
-        {user?.status === 'PENDING' ? (
-          <Text style={styles.pending}>Your community admin hasn't approved your membership yet.</Text>
-        ) : null}
-        <Text style={styles.note}>The ride feed lands in the next build step.</Text>
+      {user?.status === 'PENDING' ? (
+        <Text style={styles.pending}>Your community admin hasn't approved your membership yet.</Text>
+      ) : null}
+
+      <View style={styles.toggleWrap}>
+        <SegmentedControl
+          options={[
+            { label: 'Nearby Requests', value: 'REQUEST' },
+            { label: 'Nearby Offers', value: 'OFFER' },
+          ]}
+          value={type}
+          onChange={setType}
+        />
       </View>
 
-      <PrimaryButton title="Log out" variant="secondary" onPress={logout} />
+      {loading ? (
+        <ActivityIndicator style={styles.loading} size="large" />
+      ) : (
+        <FlatList
+          data={rides}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <RideCard ride={item} onAccept={() => handleAccept(item)} accepting={acceptingId === item.id} />
+          )}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {type === 'REQUEST' ? 'No ride requests nearby right now.' : 'No ride offers nearby right now.'}
+            </Text>
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    paddingVertical: 48,
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-  },
-  title: { fontSize: 24, fontWeight: '700', color: '#111827', marginBottom: 6 },
-  subtitle: { fontSize: 16, color: '#374151', marginBottom: 4 },
-  pending: { fontSize: 14, color: '#b45309', marginTop: 8 },
-  note: { fontSize: 14, color: '#6b7280', marginTop: 16 },
+  container: { flex: 1, backgroundColor: '#fff' },
+  headerLink: { color: '#2563eb', fontSize: 15, fontWeight: '600' },
+  pending: { fontSize: 13, color: '#b45309', backgroundColor: '#fffbeb', padding: 10 },
+  toggleWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  loading: { marginTop: 40 },
+  listContent: { padding: 16, paddingTop: 4, flexGrow: 1 },
+  empty: { textAlign: 'center', color: '#6b7280', marginTop: 40, fontSize: 14 },
 });

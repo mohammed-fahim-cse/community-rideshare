@@ -25,3 +25,59 @@ export interface VerifyOtpResponse {
     communityId: string;
   };
 }
+
+export type RidePostType = 'REQUEST' | 'OFFER';
+export type RideMode = 'ON_DEMAND' | 'SCHEDULED';
+export type RidePostStatus = 'OPEN' | 'ACCEPTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface PublicUser {
+  id: string;
+  name: string | null;
+  photoUrl: string | null;
+  phone: string | null;
+  ratingAvg: number;
+  ratingCount: number;
+}
+
+export interface RideMatch {
+  id: string;
+  acceptedAt: string;
+  arrivedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  acceptedBy: PublicUser;
+}
+
+export interface RidePost {
+  id: string;
+  type: RidePostType;
+  mode: RideMode;
+  status: RidePostStatus;
+  pickupLat: number;
+  pickupLng: number;
+  pickupAddress: string;
+  destinationLat: number;
+  destinationLng: number;
+  destinationAddress: string;
+  scheduledTime: string | null;
+  seatsAvailable: number | null;
+  suggestedFare: number | null;
+  createdAt: string;
+  creator: PublicUser;
+  match: RideMatch | null;
+}
+
+export interface CreateRidePostInput {
+  type: RidePostType;
+  mode: RideMode;
+  pickupLat: number;
+  pickupLng: number;
+  pickupAddress: string;
+  destinationLat: number;
+  destinationLng: number;
+  destinationAddress: string;
+  scheduledTime?: string;
+  seatsAvailable?: number;
+  suggestedFare?: number;
+}
