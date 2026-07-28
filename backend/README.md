@@ -65,6 +65,14 @@ Events emitted by the server:
 
 There's no client library in this repo yet — the mobile app step will add `socket.io-client`.
 
+## Ride history
+
+`GET /rides/mine` returns every ride post the caller is party to as either creator or
+acceptor, any status — unlike `GET /rides`, which deliberately excludes the caller's own
+posts (it's a browse-others feed, not a history). Each item also carries `myRating` /
+`theirRating` (the stars given/received on that ride, `null` if not rated), so a mobile
+history screen doesn't need a separate ratings lookup.
+
 ## Admin
 
 Members have a `role` of `MEMBER` or `ADMIN`. There's no signup flow for admins — promote an

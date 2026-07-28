@@ -23,6 +23,11 @@ export class RidesController {
     return this.ridesService.list(user, query);
   }
 
+  @Get('mine')
+  listMine(@CurrentUser() user: User) {
+    return this.ridesService.listMine(user);
+  }
+
   @Get(':id')
   getOne(@CurrentUser() user: User, @Param('id') id: string) {
     return this.ridesService.getOne(user, id);

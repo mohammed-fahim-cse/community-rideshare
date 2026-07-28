@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../auth/AuthContext';
@@ -105,9 +105,11 @@ export default function ActiveRideScreen({ route, navigation }: Props) {
       {other ? (
         <View style={styles.card}>
           <Text style={styles.cardLabel}>{iAmDriver ? 'Rider' : 'Driver'}</Text>
-          <Text style={styles.person}>
-            {other.name ?? 'Member'} · ★ {other.ratingAvg.toFixed(1)}
-          </Text>
+          <Pressable onPress={() => navigation.navigate('PublicProfile', { userId: other.id })}>
+            <Text style={styles.person}>
+              {other.name ?? 'Member'} · ★ {other.ratingAvg.toFixed(1)}
+            </Text>
+          </Pressable>
           {other.phone ? (
             <Text style={styles.phone} onPress={handleCall}>
               📞 {other.phone}
@@ -118,11 +120,7 @@ export default function ActiveRideScreen({ route, navigation }: Props) {
 
       {!isTerminal ? (
         <View style={styles.actions}>
-          <PrimaryButton
-            title="Chat"
-            variant="secondary"
-            onPress={() => Alert.alert('Chat', 'Chat is coming in the next update.')}
-          />
+          <PrimaryButton title="Chat" variant="secondary" onPress={() => navigation.navigate('Chat', { ride })} />
 
           {iAmDriver && ride.status === 'ACCEPTED' ? (
             <PrimaryButton title="Mark arrived at pickup" onPress={handleArrived} loading={busy} />
@@ -154,7 +152,12 @@ export default function ActiveRideScreen({ route, navigation }: Props) {
           )}
         </View>
       ) : (
-        <PrimaryButton title="Back to feed" onPress={() => navigation.popToTop()} />
+        <View style={styles.actions}>
+          {ride.status === 'COMPLETED' ? (
+            <PrimaryButton title="Rate this ride" onPress={() => navigation.navigate('Rating', { ride })} />
+          ) : null}
+          <PrimaryButton title="Back to feed" variant="secondary" onPress={() => navigation.popToTop()} />
+        </View>
       )}
     </ScrollView>
   );

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../auth/AuthContext';
@@ -8,25 +9,27 @@ import { useSocket } from '../realtime/SocketContext';
 import { listRides } from '../api/rides';
 import { ApiError } from '../api/client';
 import type { RidePost, RidePostType } from '../api/types';
+import { preferences } from '../settings/preferences';
 import { RideCard } from '../components/RideCard';
 import { SegmentedControl } from '../components/SegmentedControl';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
-  const { user, accessToken, logout } = useAuth();
+  const { user, accessToken } = useAuth();
   const socket = useSocket();
   const [type, setType] = useState<RidePostType>('REQUEST');
   const [rides, setRides] = useState<RidePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState<number | null>(null);
 
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
-        <Pressable onPress={logout} hitSlop={8}>
-          <Text style={styles.headerLink}>Log out</Text>
+        <Pressable onPress={() => navigation.navigate('Menu')} hitSlop={8}>
+          <Text style={styles.headerLink}>☰ Menu</Text>
         </Pressable>
       ),
       headerRight: () => (
@@ -35,7 +38,7 @@ export default function HomeScreen({ navigation }: Props) {
         </Pressable>
       ),
     });
-  }, [navigation, logout]);
+  }, [navigation]);
 
   // Best-effort: the feed still works community-wide if location is denied or unavailable.
   useEffect(() => {
@@ -51,10 +54,18 @@ export default function HomeScreen({ navigation }: Props) {
     })();
   }, []);
 
+  // Re-read on every focus so a radius change made in Settings applies as soon as the
+  // user comes back to the feed, without needing a full app restart.
+  useFocusEffect(
+    useCallback(() => {
+      preferences.getRadiusKm().then(setRadiusKm);
+    }, []),
+  );
+
   const fetchRides = useCallback(async () => {
     if (!accessToken) return;
     try {
-      const data = await listRides(accessToken, { type, near: coords ?? undefined });
+      const data = await listRides(accessToken, { type, near: coords ?? undefined, radiusKm: radiusKm ?? undefined });
       setRides(data);
     } catch (err) {
       Alert.alert('Could not load rides', err instanceof ApiError ? err.message : 'Please try again.');
@@ -62,7 +73,7 @@ export default function HomeScreen({ navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken, type, coords]);
+  }, [accessToken, type, coords, radiusKm]);
 
   useEffect(() => {
     setLoading(true);

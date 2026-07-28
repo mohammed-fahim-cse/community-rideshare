@@ -531,7 +531,7 @@
       <li><a href="#health"><span>Health</span><span class="n">1</span></a></li>
       <li><a href="#auth"><span>Auth</span><span class="n">3</span></a></li>
       <li><a href="#users"><span>Users</span><span class="n">3</span></a></li>
-      <li><a href="#rides"><span>Rides</span><span class="n">6</span></a></li>
+      <li><a href="#rides"><span>Rides</span><span class="n">7</span></a></li>
       <li><a href="#ratings"><span>Ratings</span><span class="n">1</span></a></li>
       <li><a href="#chat"><span>Chat</span><span class="n">2</span></a></li>
       <li><a href="#reports"><span>Reports</span><span class="n">1</span></a></li>
@@ -548,7 +548,7 @@
 
   <main>
     <div class="intro">
-      <h1>25 endpoints, one dispatch board.</h1>
+      <h1>26 endpoints, one dispatch board.</h1>
       <p>Everything the backend exposes today: phone/OTP auth, ride posting and matching, chat, ratings, reports, blocks, admin moderation, device registration, and the Socket.io events that keep clients live. Every shape below reflects the actual DTOs and service code — not a spec draft.</p>
       <div class="rule">
         <span><strong>Auth</strong> — Bearer JWT from <code>verify-otp</code></span>
@@ -730,6 +730,17 @@
           </table>
           <dl class="field"><dt>200</dt><dd class="muted">array of ride posts — sorted by distance if <code>near</code> given, else newest first. Excludes your own posts and anyone blocked either direction.</dd></dl>
           <div class="errs"><span><b>400</b> malformed <code>near</code></span></div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method get">GET</span>
+          <span class="path" data-copy="/rides/mine">/rides/mine<span class="copy-hint">copy</span></span>
+          <span class="endpoint-note">ride history</span>
+        </div>
+        <div class="endpoint-body">
+          <dl class="field"><dt>200</dt><dd class="muted">array of ride posts you're party to as either creator or acceptor, any status, newest first — unlike <code>GET /rides</code>, does not exclude your own posts. Each item also has <code>myRating</code> and <code>theirRating</code> (stars, or <code>null</code> if not rated).</dd></dl>
         </div>
       </div>
 

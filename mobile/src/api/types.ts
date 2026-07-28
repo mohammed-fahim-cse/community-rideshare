@@ -81,3 +81,26 @@ export interface CreateRidePostInput {
   seatsAvailable?: number;
   suggestedFare?: number;
 }
+
+export interface RideHistoryItem extends RidePost {
+  myRating: number | null;
+  theirRating: number | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  rideMatchId: string;
+  senderId: string;
+  text: string;
+  sentAt: string;
+}
+
+export interface Rating {
+  id: string;
+  rideMatchId: string;
+  raterId: string;
+  ratedUserId: string;
+  stars: number;
+  comment: string | null;
+  createdAt: string;
+}

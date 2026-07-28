@@ -103,6 +103,28 @@ export class RidesService {
     return this.shape(post, user.id);
   }
 
+  // Rides the user is party to as either creator or acceptor, any status — for the
+  // ride history screen. Unlike list(), this deliberately does NOT exclude the user's
+  // own posts, since that's the whole point here.
+  async listMine(user: User) {
+    const posts = await this.prisma.ridePost.findMany({
+      where: {
+        OR: [{ creatorId: user.id }, { match: { acceptedByUserId: user.id } }],
+      },
+      include: {
+        creator: true,
+        match: { include: { acceptedBy: true, ratings: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return posts.map((post) => ({
+      ...this.shape(post, user.id),
+      myRating: post.match?.ratings.find((r) => r.raterId === user.id)?.stars ?? null,
+      theirRating: post.match?.ratings.find((r) => r.ratedUserId === user.id)?.stars ?? null,
+    }));
+  }
+
   async accept(user: User, id: string) {
     const post = await this.findOrThrow(id);
     this.assertSameCommunity(post, user);

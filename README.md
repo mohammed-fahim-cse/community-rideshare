@@ -30,8 +30,9 @@ requirements doc, section 10).
 - [x] Backend: Chat + ratings + reports endpoints
 - [x] Backend: WebSocket layer for live status/chat updates
 - [x] Backend: admin endpoints (member approval, report actions) + device registration
+- [x] Backend: `GET /rides/mine` for ride history (added alongside the mobile history screen)
 - [x] Mobile: auth flow + community join (Expo, `mobile/`)
 - [x] Mobile: home feed + create ride post (map view deferred — see mobile/README.md)
 - [x] Mobile: ride detail, accept flow, active ride tracker
-- [ ] Mobile: chat, ratings, history, profile, notifications
+- [x] Mobile: chat, ratings, history, profile, settings (notifications list deferred — no backend feed to show; see mobile/README.md)
 - [ ] Web admin dashboard

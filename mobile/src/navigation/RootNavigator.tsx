@@ -12,6 +12,13 @@ import HomeScreen from '../screens/HomeScreen';
 import CreateRidePostScreen from '../screens/CreateRidePostScreen';
 import RideDetailScreen from '../screens/RideDetailScreen';
 import ActiveRideScreen from '../screens/ActiveRideScreen';
+import ChatScreen from '../screens/ChatScreen';
+import RatingScreen from '../screens/RatingScreen';
+import RideHistoryScreen from '../screens/RideHistoryScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import PublicProfileScreen from '../screens/PublicProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import MenuScreen from '../screens/MenuScreen';
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -25,6 +32,13 @@ export type AppStackParamList = {
   CreateRidePost: undefined;
   RideDetail: { rideId: string };
   ActiveRide: { ride: RidePost };
+  Chat: { ride: RidePost };
+  Rating: { ride: RidePost };
+  RideHistory: undefined;
+  Profile: undefined;
+  PublicProfile: { userId: string };
+  Settings: undefined;
+  Menu: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -53,6 +67,13 @@ export function RootNavigator() {
           />
           <AppStack.Screen name="RideDetail" component={RideDetailScreen} options={{ title: 'Ride details' }} />
           <AppStack.Screen name="ActiveRide" component={ActiveRideScreen} />
+          <AppStack.Screen name="Chat" component={ChatScreen} />
+          <AppStack.Screen name="Rating" component={RatingScreen} options={{ title: 'Rate your ride' }} />
+          <AppStack.Screen name="RideHistory" component={RideHistoryScreen} options={{ title: 'Ride history' }} />
+          <AppStack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+          <AppStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Member' }} />
+          <AppStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+          <AppStack.Screen name="Menu" component={MenuScreen} options={{ title: 'Menu' }} />
         </AppStack.Navigator>
       ) : (
         <AuthStack.Navigator screenOptions={{ headerShown: false }}>

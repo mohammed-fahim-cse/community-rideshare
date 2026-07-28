@@ -21,13 +21,14 @@ React Native (Expo) app for Community RideShare — one codebase for Android + i
 
 ## Structure
 
-- `src/api/` — `apiRequest()` fetch wrapper (attaches the Bearer token, normalizes Nest's error shape), shared response types, and `rides.ts` (list/get/create/accept/arrived/complete/cancel).
-- `src/auth/` — `AuthContext` (signup/login/verifyOtp/logout, session restore on launch) and token storage (AsyncStorage — see note below).
+- `src/api/` — `apiRequest()` fetch wrapper (attaches the Bearer token, normalizes Nest's error shape), shared response types, and one module per resource: `rides.ts` (list/mine/get/create/accept/arrived/complete/cancel), `chat.ts`, `ratings.ts`, `users.ts`, `blocks.ts`, `reports.ts`, `notifications.ts`.
+- `src/auth/` — `AuthContext` (signup/login/verifyOtp/logout, session restore on launch, `setUser` for updating the cached profile after an edit) and token storage (AsyncStorage — see note below).
 - `src/realtime/SocketContext.tsx` — opens a Socket.io connection once signed in (same JWT as the API), closes it on sign-out. `useSocket()` returns the raw socket so screens can subscribe to the events documented in `../docs/api-reference.html`.
 - `src/location/useCurrentLocation.ts` — wraps `expo-location` permission request + `getCurrentPositionAsync`, with a coordinate-only fallback when reverse geocoding isn't available (notably: not on web).
 - `src/rides/roles.ts` — `getDriver`/`getRider`/`getOtherParticipant`, mirroring the backend's REQUEST-vs-OFFER role-assignment logic so the client doesn't have to re-derive it differently in each screen.
-- `src/components/` — small shared UI pieces (`TextField`, `PrimaryButton`, `ErrorBanner`, `SegmentedControl`, `RideCard`, `CashDisclaimer`, `StatusTracker`) used across screens.
-- `src/screens/` — `WelcomeScreen`, `JoinCommunityScreen` (signup), `LoginScreen`, `VerifyOtpScreen`, `HomeScreen` (the ride feed), `CreateRidePostScreen`, `RideDetailScreen`, `ActiveRideScreen`.
+- `src/settings/` — `preferences.ts` (AsyncStorage-backed search radius + notifications-enabled, purely client-side) and `pushNotifications.ts` (best-effort Expo push token registration).
+- `src/components/` — small shared UI pieces (`TextField`, `PrimaryButton`, `ErrorBanner`, `SegmentedControl`, `RideCard`, `CashDisclaimer`, `StatusTracker`, `StarRating`) used across screens.
+- `src/screens/` — `WelcomeScreen`, `JoinCommunityScreen` (signup), `LoginScreen`, `VerifyOtpScreen`, `HomeScreen` (the ride feed), `CreateRidePostScreen`, `RideDetailScreen`, `ActiveRideScreen`, `ChatScreen`, `RatingScreen`, `RideHistoryScreen`, `ProfileScreen`, `PublicProfileScreen`, `SettingsScreen`, `MenuScreen`.
 - `src/navigation/RootNavigator.tsx` — swaps between the auth stack and the app stack based on `AuthContext`'s status; no manual "navigate to home" calls needed after verifying OTP.
 
 ## Auth flow
@@ -55,7 +56,19 @@ A member whose `status` is still `PENDING` (awaiting admin approval) does reach 
 
 The creator of a post never sees it in their own feed (the backend excludes your own posts), so `HomeScreen` also listens for `ride:accepted` — sent only to the creator's own room — and offers to jump straight to `ActiveRideScreen` when someone accepts their post. That's currently the only way a creator reaches the tracker for their own ride; a persistent "my active ride" entry point is a reasonable follow-up but wasn't in this step's scope.
 
-The **Chat** button on `ActiveRideScreen` is present (per the doc's screen spec) but just shows a "coming soon" alert — the backend chat API is done, but building the actual chat screen is explicitly the next build-order step, alongside ratings/history/profile/notifications.
+### Chat, ratings, history, profile, settings
+
+`ChatScreen` (reached from `ActiveRideScreen`'s **Chat** button, and from a completed ride in history) shows `GET /rides/:id/messages` as bubbles and subscribes to `message:new`, filtered by `rideMatchId` so a message on one ride's chat can't leak into a different one. Sending is disabled implicitly by the backend once chat closes (24h after completion) — the send call just surfaces that 403 like any other error.
+
+`RatingScreen` shows once a ride is `COMPLETED` (a **Rate this ride** button appears on the terminal state of `ActiveRideScreen`/history detail): five tappable stars + an optional comment, `POST /rides/:id/rate`. A 409 (already rated) is treated as success from the user's perspective — an alert saying so, then back. The button doesn't hide itself after rating in the same session (no client-side "already rated" tracking yet, since there's no `GET` for a single rating) — tapping again just re-surfaces that same friendly message rather than double-submitting.
+
+`RideHistoryScreen` (`GET /rides/mine` — a backend endpoint added in this step, since the feed endpoint deliberately excludes your own posts and has no notion of "mine") lists every ride the member has been part of as either role, with status, the other party, and `myRating`/`theirRating` if the ride is complete. It refetches on every focus (`useFocusEffect`), not just on mount, so returning to it after rating or after a ride progresses shows current data rather than whatever was cached from an earlier visit.
+
+`ProfileScreen` edits name / photo URL / phone-visibility (`PATCH /users/me`) and pushes the result back into `AuthContext` via `setUser` so the rest of the app immediately reflects it. `PublicProfileScreen` (reached by tapping the other participant's name on the tracker) shows another member's public info plus **Report member** (inline reason form, `POST /reports`) and **Block member** (`POST /blocks`, gated behind a confirm alert — see the `Alert.alert` note below for why that specific action isn't clickable in the web test harness, though the backend behavior is verified separately).
+
+`SettingsScreen` covers the three things doc section 6 asks for: a **search radius** override (chips, purely local via `preferences.ts`, applied as the `radiusKm` query param `HomeScreen` already knew how to send — re-read on every `HomeScreen` focus so a change applies the moment you go back to the feed), a **push notifications** toggle (best-effort: requests permission, tries to get a real Expo push token and register it via `POST /notifications/register-device`; reports back and reverts the toggle if that fails rather than pretending it worked), and the **blocked members** list (`GET/DELETE /blocks`).
+
+There's no "notifications list/inbox" screen: the backend has no persisted notification feed (no such table in the schema, and no push provider wired up), so "notifications" here means the real-time socket alerts already built into the feed/tracker plus this registration toggle — not a separate screen with history.
 
 ### Deferred: map view / map-based location picker
 
@@ -69,4 +82,4 @@ Token storage uses `@react-native-async-storage/async-storage` rather than `expo
 
 There's no device/emulator in this dev environment, so screens are verified via `expo start --web` driven by a headless Chromium (Playwright — `chromium-cli` wasn't available here). That covers all the cross-platform logic (API calls, state, sockets, geolocation via mocked browser permissions) but not native-only surfaces like real map rendering or push notifications.
 
-One thing this surfaced: `Alert.alert(title, message, [button, button])` — the multi-custom-button form used for the `ride:accepted` notification — doesn't render a visible dialog on react-native-web (confirmed the underlying socket event and handler both fire correctly; only the web UI is a no-op). Single-button/default alerts (used everywhere else — error messages, confirmations) do work on web via `window.confirm`/`alert`. This is a web-target-only quirk, not a bug: `Alert.alert` with custom buttons works as designed on iOS/Android, which is what this actually ships to.
+One thing this surfaced: `Alert.alert(title, message, [button, button])` — the multi-custom-button form, used for the `ride:accepted` notification and for the block-member confirmation — doesn't render a visible dialog on react-native-web (confirmed the underlying socket event/handler still fire correctly; only the web UI is a no-op). Single-button/default alerts (used everywhere else — error messages, confirmations, the report-submitted toast) do work on web via `window.confirm`/`alert`. This is a web-target-only quirk, not a bug: `Alert.alert` with custom buttons works as designed on iOS/Android, which is what this actually ships to. Where a web click-through test needed to get past one of these (blocking a member), the underlying REST call was verified directly instead, then confirmed rendering correctly in the UI once the state existed.
