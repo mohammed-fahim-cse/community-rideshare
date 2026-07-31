@@ -37,5 +37,15 @@ requirements doc, section 10).
 - [x] Mobile: chat, ratings, history, profile, settings (notifications list deferred — no backend feed to show; see mobile/README.md)
 - [x] Backend: `GET/PATCH /admin/community` + `GET /admin/rides` (added alongside the web dashboard)
 - [x] Web admin dashboard: members, rides, reports, community settings (`web/`)
-- [ ] Polish pass (disclaimers, empty states, error handling)
-- [ ] Testing pass + basic CI
+- [x] Polish pass — disclaimers, empty states, and error handling turned out to already be
+      covered from building each screen carefully; this pass mainly fixed broken/missing
+      lint tooling (backend had no working ESLint config despite the script existing;
+      mobile had none at all) and documented the offline-handling scope cut
+- [x] Testing pass + CI — backend e2e (Jest + Supertest, real Postgres, 20 tests incl. the
+      concurrent-accept race condition), mobile + web unit tests, GitHub Actions
+      (`.github/workflows/ci.yml`) running lint/typecheck/test/build across all three
+      workspaces on every push and PR
+
+## CI
+
+[![CI](https://github.com/mohammed-fahim-cse/community-rideshare/actions/workflows/ci.yml/badge.svg)](https://github.com/mohammed-fahim-cse/community-rideshare/actions/workflows/ci.yml)

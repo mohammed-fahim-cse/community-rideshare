@@ -103,6 +103,33 @@ a device token by `token`, so the same physical device re-registering (app resta
 member logging in) moves the token rather than duplicating it. This only stores the token — no
 push provider (FCM) is wired up yet; that lands with the mobile app.
 
+## Testing
+
+E2e tests (Jest + Supertest) run against a real Postgres database — separate from the dev
+one, so tests never touch data you're looking at in another terminal:
+
+```
+docker exec <postgres-container> psql -U rideshare -d postgres -c "CREATE DATABASE rideshare_test;"
+npm run prisma:migrate:deploy -w backend   # DATABASE_URL from .env.test picks up the test DB
+npm run test -w backend
+```
+
+`.env.test` (checked in — no real secrets, just the same dev credentials from
+`docker-compose.yml` pointed at `rideshare_test`) is loaded by `test/env.setup.js`; CI sets
+`DATABASE_URL`/`JWT_SECRET` directly instead; either way, real env vars always win over the
+file. Each spec file truncates every table in `beforeEach` (`test/utils/test-app.ts`), so
+tests don't need to worry about leftover data from a previous run or file.
+
+There's no SMS provider, so OTP codes can't be read off a phone — `installOtpCapture()`
+spies on `Logger.prototype.log` (the same place `OtpService` currently prints the code) and
+parses it back out, rather than weakening real signup/login/verify logic for tests.
+
+Coverage: `auth.e2e-spec.ts` (signup/login/verify-otp, including a suspended account),
+`rides.e2e-spec.ts` (full lifecycle, driver/rider role assignment, blocks, and — the one
+that actually matters — two concurrent `accept` calls on the same post, asserting exactly
+one wins), `admin.e2e-spec.ts` (role gating, member approval, a report's `SUSPEND` action
+cascading into a blocked ride action, community settings).
+
 ## Seeding a community
 
 Run the seed script to create a demo community and invite code:

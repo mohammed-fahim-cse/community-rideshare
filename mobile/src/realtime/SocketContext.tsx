@@ -12,15 +12,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status !== 'signedIn' || !accessToken) {
-      setSocket(null);
       return;
     }
 
     const s = io(SOCKET_URL, { auth: { token: accessToken }, transports: ['websocket'] });
+    // Storing the handle to a connection just opened in this same effect — the textbook
+    // "connect to an external system" case; there's no async boundary to move this past.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(s);
 
     return () => {
       s.disconnect();
+      setSocket(null);
     };
   }, [status, accessToken]);
 

@@ -74,6 +74,10 @@ There's no "notifications list/inbox" screen: the backend has no persisted notif
 
 The requirements doc calls for a map alongside the list, and a map picker for setting pickup/destination. That's deliberately not built yet: `react-native-maps` has no web support, and this dev environment has no Android/iOS device or emulator to actually verify native map rendering on — shipping it now would mean unverified code. The feed and create-post flow are fully functional without it (list view, manual/geolocated coordinates); add the map once there's a way to test it on a real device or simulator.
 
+### Deferred: offline action queueing
+
+The doc's non-functional requirements ask for actions like "mark completed" to queue and retry when the network drops. Not built — it's a genuine feature (persisted queue, retry/backoff, conflict handling when the queued action no longer applies) rather than a small addition, and every screen already fails predictably offline (the request throws, the existing `ApiError` handling shows a message, nothing is silently lost — the user just has to retry manually once back online).
+
 ## Known simplification
 
 Token storage uses `@react-native-async-storage/async-storage` rather than `expo-secure-store`, because AsyncStorage also works on web (needed to test this flow with a browser in a headless dev environment) while SecureStore has no web support. Swap to SecureStore (native-only, gated behind `Platform.OS`) before a real release — an unencrypted JWT at rest is fine for this MVP milestone, not for production.
@@ -81,5 +85,13 @@ Token storage uses `@react-native-async-storage/async-storage` rather than `expo
 ## Testing note
 
 There's no device/emulator in this dev environment, so screens are verified via `expo start --web` driven by a headless Chromium (Playwright — `chromium-cli` wasn't available here). That covers all the cross-platform logic (API calls, state, sockets, geolocation via mocked browser permissions) but not native-only surfaces like real map rendering or push notifications.
+
+Automated unit tests (`npm run test -w mobile`, via `jest-expo`) cover pure logic only —
+currently `src/rides/roles.ts` (the REQUEST-vs-OFFER driver/rider assignment, the one piece
+of client logic with a real "easy to get backwards" risk). Screens themselves aren't
+component-tested; the Playwright pass above is what actually exercises them, end to end,
+against a running backend — a more faithful check than mocked component tests would be for
+UI this state/network-heavy, but it means there's no fast CI signal for screen-level
+regressions the way `src/rides/roles.ts` has one.
 
 One thing this surfaced: `Alert.alert(title, message, [button, button])` — the multi-custom-button form, used for the `ride:accepted` notification and for the block-member confirmation — doesn't render a visible dialog on react-native-web (confirmed the underlying socket event/handler still fire correctly; only the web UI is a no-op). Single-button/default alerts (used everywhere else — error messages, confirmations, the report-submitted toast) do work on web via `window.confirm`/`alert`. This is a web-target-only quirk, not a bug: `Alert.alert` with custom buttons works as designed on iOS/Android, which is what this actually ships to. Where a web click-through test needed to get past one of these (blocking a member), the underlying REST call was verified directly instead, then confirmed rendering correctly in the UI once the state existed.

@@ -62,21 +62,28 @@ export default function HomeScreen({ navigation }: Props) {
     }, []),
   );
 
-  const fetchRides = useCallback(async () => {
-    if (!accessToken) return;
-    try {
-      const data = await listRides(accessToken, { type, near: coords ?? undefined, radiusKm: radiusKm ?? undefined });
-      setRides(data);
-    } catch (err) {
-      Alert.alert('Could not load rides', err instanceof ApiError ? err.message : 'Please try again.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [accessToken, type, coords, radiusKm]);
+  const fetchRides = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!accessToken) return;
+      if (!opts?.silent) setLoading(true);
+      try {
+        const data = await listRides(accessToken, { type, near: coords ?? undefined, radiusKm: radiusKm ?? undefined });
+        setRides(data);
+      } catch (err) {
+        Alert.alert('Could not load rides', err instanceof ApiError ? err.message : 'Please try again.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [accessToken, type, coords, radiusKm],
+  );
 
   useEffect(() => {
-    setLoading(true);
+    // Fetching on mount and whenever the filter/location inputs change is exactly the
+    // "synchronize with an external system" case; setLoading happens inside the async
+    // call, not bare in the effect body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRides();
   }, [fetchRides]);
 
@@ -123,7 +130,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchRides();
+    fetchRides({ silent: true });
   };
 
   return (

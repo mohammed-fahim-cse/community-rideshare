@@ -45,6 +45,17 @@ The access token is kept in `localStorage` (`rideshare.admin.accessToken`), not
 All four pages hit endpoints under `/admin/*` — see `docs/api-reference.html` at the repo
 root for exact request/response shapes.
 
+## Testing
+
+`npm run test -w web` runs Vitest + Testing Library — `StatusBadge`'s status→tone mapping
+(the fallback-to-neutral-on-unknown-status path matters, since the backend's status enums
+can grow) and `LoginPage`'s two-step flow (send code → verify, plus the error path,
+mocking `useAuth` rather than the network so these stay fast/isolated). Not a full suite —
+`MembersPage`/`RidesPage`/`ReportsPage`/`SettingsPage` were instead verified via a scripted
+Playwright pass against a running backend (see the "Add web admin dashboard" commit), which
+is a more faithful check for pages that are mostly "fetch, render a table, mutate, refetch"
+than a mocked-fetch component test would be.
+
 ## Known gaps
 
 - No live updates (Socket.io) — pages fetch on load/filter-change only. The doc's

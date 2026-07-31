@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rideshare
+          POSTGRES_PASSWORD: rideshare
+          POSTGRES_DB: rideshare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rideshare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://rideshare:rideshare@localhost:5432/rideshare_test?schema=public
+      JWT_SECRET: ci-test-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:generate -w backend
+      - run: npm run prisma:migrate:deploy -w backend
+      - run: npm run lint -w backend
+      - run: npm run build -w backend
+      - run: npm run test:e2e -w backend
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -w mobile
+      - run: npm run typecheck -w mobile
+      - run: npm run test -w mobile -- --ci
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -w web
+      - run: npm run test -w web
+      - run: npm run build -w web
