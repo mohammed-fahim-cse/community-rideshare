@@ -1,10 +1,13 @@
 name: CI
 
-# Every job uses `npm install`, not `npm ci`, deliberately: package-lock.json was last
-# regenerated on Windows, and npm has a long-standing bug (npm/cli#4828) where a lockfile
-# resolved on one OS doesn't reliably record other platforms' optional native deps (oxlint's
-# platform-specific binding, in this repo's case) — `npm ci` trusts that snapshot strictly
-# and fails on Linux runners as a result, while `npm install` re-resolves per-platform.
+# Every job deletes package-lock.json before installing, and uses `npm install` rather than
+# `npm ci`. package-lock.json in this repo is maintained on Windows, and npm has a
+# long-standing bug (npm/cli#4828) where a lockfile resolved on one OS doesn't reliably
+# record every other platform's optional native bindings — it's bitten more than one
+# package here (oxlint, then Vite's rolldown bundler), so rather than fix it dependency by
+# dependency, CI just re-resolves its own lockfile fresh on the runner's actual platform
+# every time. No `cache: npm` on setup-node for the same reason — a cache keyed on a
+# lockfile hash that's about to be deleted isn't useful.
 
 on:
   push:
@@ -36,7 +39,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+      - run: rm -f package-lock.json
       - run: npm install
       - run: npm run prisma:generate -w backend
       - run: npm run prisma:migrate:deploy -w backend
@@ -51,7 +54,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+      - run: rm -f package-lock.json
       - run: npm install
       - run: npm run lint -w mobile
       - run: npm run typecheck -w mobile
@@ -64,7 +67,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+      - run: rm -f package-lock.json
       - run: npm install
       - run: npm run lint -w web
       - run: npm run test -w web
