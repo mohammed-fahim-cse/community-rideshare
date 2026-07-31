@@ -536,19 +536,19 @@
       <li><a href="#chat"><span>Chat</span><span class="n">2</span></a></li>
       <li><a href="#reports"><span>Reports</span><span class="n">1</span></a></li>
       <li><a href="#blocks"><span>Blocks</span><span class="n">3</span></a></li>
-      <li><a href="#admin"><span>Admin</span><span class="n">4</span></a></li>
+      <li><a href="#admin"><span>Admin</span><span class="n">6</span></a></li>
       <li><a href="#notifications"><span>Notifications</span><span class="n">1</span></a></li>
       <li><a href="#realtime"><span>Realtime</span><span class="n">ws</span></a></li>
     </ul>
     <p class="toc-label">Build status</p>
     <p style="font-family:var(--font-mono); font-size:12px; color:var(--slate); line-height:1.7;">
-      Steps 1–4 of 11 complete,<br>plus admin + notifications.<br>Backend only — no mobile/web client yet.
+      Steps 1–9 of 11 complete.<br>Backend, mobile app, and<br>web admin dashboard all live.
     </p>
   </nav>
 
   <main>
     <div class="intro">
-      <h1>26 endpoints, one dispatch board.</h1>
+      <h1>28 endpoints, one dispatch board.</h1>
       <p>Everything the backend exposes today: phone/OTP auth, ride posting and matching, chat, ratings, reports, blocks, admin moderation, device registration, and the Socket.io events that keep clients live. Every shape below reflects the actual DTOs and service code — not a spec draft.</p>
       <div class="rule">
         <span><strong>Auth</strong> — Bearer JWT from <code>verify-otp</code></span>
@@ -986,6 +986,43 @@
           <dl class="field"><dt>200</dt><dd class="muted">updated report — <code>DISMISS → REVIEWED</code>, everything else <code>→ ACTIONED</code></dd></dl>
           <dl class="field"><dt>Side effect</dt><dd class="muted"><code>SUSPEND</code> / <code>REMOVE</code> also set the reported member's status to <code>SUSPENDED</code> — there's no separate "removed" account state yet. <code>WARN</code> only marks the report actioned.</dd></dl>
           <div class="errs"><span><b>404</b> not in your community</span><span><b>409</b> report already reviewed/actioned</span></div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method get">GET</span>
+          <span class="path" data-copy="/admin/rides?status=&from=&to=">/admin/rides<span class="copy-hint">copy</span></span>
+          <span class="endpoint-note">oversight, any status</span>
+        </div>
+        <div class="endpoint-body">
+          <table class="kv">
+            <tr><th>status</th><td>optional — omit for every status, not just one</td></tr>
+            <tr><th>from / to</th><td>optional ISO 8601 dates, filter on <code>createdAt</code></td></tr>
+          </table>
+          <dl class="field"><dt>200</dt><dd class="muted">array of ride posts, newest first — unlike <code>/rides</code> and <code>/rides/mine</code>, this isn't scoped to one member; every ride in the community is visible</dd></dl>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method get">GET</span>
+          <span class="path" data-copy="/admin/community">/admin/community<span class="copy-hint">copy</span></span>
+        </div>
+        <div class="endpoint-body">
+          <dl class="field"><dt>200</dt><dd><pre>{ "id", "name", "inviteCode", "autoApprove", "matchingRadiusKm", "createdAt" }</pre></dd></dl>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-head">
+          <span class="method patch">PATCH</span>
+          <span class="path" data-copy="/admin/community">/admin/community<span class="copy-hint">copy</span></span>
+        </div>
+        <div class="endpoint-body">
+          <dl class="field"><dt>Input</dt><dd><pre>{ "name"?: string, "autoApprove"?: boolean, "matchingRadiusKm"?: number }</pre></dd></dl>
+          <dl class="field"><dt>200</dt><dd class="muted">updated community — same shape as <code>GET</code></dd></dl>
+          <dl class="field"><dt>Note</dt><dd class="muted"><code>inviteCode</code> isn't editable through this endpoint — regenerating it could orphan an in-flight signup.</dd></dl>
         </div>
       </div>
     </section>

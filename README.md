@@ -35,4 +35,7 @@ requirements doc, section 10).
 - [x] Mobile: home feed + create ride post (map view deferred — see mobile/README.md)
 - [x] Mobile: ride detail, accept flow, active ride tracker
 - [x] Mobile: chat, ratings, history, profile, settings (notifications list deferred — no backend feed to show; see mobile/README.md)
-- [ ] Web admin dashboard
+- [x] Backend: `GET/PATCH /admin/community` + `GET /admin/rides` (added alongside the web dashboard)
+- [x] Web admin dashboard: members, rides, reports, community settings (`web/`)
+- [ ] Polish pass (disclaimers, empty states, error handling)
+- [ ] Testing pass + basic CI

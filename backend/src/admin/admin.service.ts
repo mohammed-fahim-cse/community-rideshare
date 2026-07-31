@@ -1,9 +1,11 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { ReportStatus, User, UserStatus } from '@prisma/client';
+import { Prisma, ReportStatus, User, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListMembersDto } from './dto/list-members.dto';
 import { ListAdminReportsDto } from './dto/list-admin-reports.dto';
 import { ReportActionDto } from './dto/report-action.dto';
+import { ListAdminRidesDto } from './dto/list-admin-rides.dto';
+import { UpdateCommunityDto } from './dto/update-community.dto';
 
 @Injectable()
 export class AdminService {
@@ -70,5 +72,34 @@ export class AdminService {
       }
       return tx.report.update({ where: { id: reportId }, data: { status: ReportStatus.ACTIONED } });
     });
+  }
+
+  // Oversight view across every ride in the admin's community, unlike the member-facing
+  // /rides (browse feed, excludes your own posts) and /rides/mine (only your own).
+  async listRides(admin: User, query: ListAdminRidesDto) {
+    const createdAt: Prisma.DateTimeFilter = {};
+    if (query.from) createdAt.gte = new Date(query.from);
+    if (query.to) createdAt.lte = new Date(query.to);
+
+    return this.prisma.ridePost.findMany({
+      where: {
+        creator: { communityId: admin.communityId },
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.from || query.to ? { createdAt } : {}),
+      },
+      include: {
+        creator: { select: { id: true, name: true, phone: true } },
+        match: { include: { acceptedBy: { select: { id: true, name: true, phone: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getCommunity(admin: User) {
+    return this.prisma.community.findUniqueOrThrow({ where: { id: admin.communityId } });
+  }
+
+  async updateCommunity(admin: User, dto: UpdateCommunityDto) {
+    return this.prisma.community.update({ where: { id: admin.communityId }, data: dto });
   }
 }

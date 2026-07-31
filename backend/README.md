@@ -90,6 +90,11 @@ community:
 - `POST /admin/reports/:id/action` `{ action: "WARN" | "SUSPEND" | "REMOVE" | "DISMISS" }` —
   `SUSPEND`/`REMOVE` also set the reported member's status to `SUSPENDED` (there's no separate
   "removed" account state yet); `DISMISS` closes the report with no action taken.
+- `GET /admin/rides?status=&from=&to=` — every ride post in the community, any status
+  (unlike `/rides` and `/rides/mine`, this isn't scoped to a single member). `from`/`to`
+  filter on `createdAt` and are optional ISO 8601 dates.
+- `GET /admin/community` / `PATCH /admin/community` `{ name?, autoApprove?, matchingRadiusKm? }`
+  — community settings. `inviteCode` isn't editable through this endpoint.
 
 ## Notifications
 
