@@ -1,5 +1,11 @@
 name: CI
 
+# Every job uses `npm install`, not `npm ci`, deliberately: package-lock.json was last
+# regenerated on Windows, and npm has a long-standing bug (npm/cli#4828) where a lockfile
+# resolved on one OS doesn't reliably record other platforms' optional native deps (oxlint's
+# platform-specific binding, in this repo's case) — `npm ci` trusts that snapshot strictly
+# and fails on Linux runners as a result, while `npm install` re-resolves per-platform.
+
 on:
   push:
     branches: [master]
@@ -31,7 +37,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run prisma:generate -w backend
       - run: npm run prisma:migrate:deploy -w backend
       - run: npm run lint -w backend
@@ -46,7 +52,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run lint -w mobile
       - run: npm run typecheck -w mobile
       - run: npm run test -w mobile -- --ci
@@ -59,7 +65,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run lint -w web
       - run: npm run test -w web
       - run: npm run build -w web
