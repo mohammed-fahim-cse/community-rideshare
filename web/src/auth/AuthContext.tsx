@@ -25,6 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) {
+      // Synchronously deciding "no token, so signed out" — there's no async boundary to
+      // move this past; it's the initial read of an external system (localStorage), not a
+      // subscription.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('signedOut');
       return;
     }

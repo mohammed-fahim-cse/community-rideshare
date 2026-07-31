@@ -21,6 +21,7 @@ export function ReportsPage() {
   const load = useCallback(
     (s: ReportStatus) => {
       if (!accessToken) return;
+      setReports(null);
       setError(null);
       listReports(accessToken, s)
         .then(setReports)
@@ -30,7 +31,10 @@ export function ReportsPage() {
   );
 
   useEffect(() => {
-    setReports(null);
+    // Fetching on mount and whenever the status tab changes is the "synchronize with an
+    // external system" case React's own docs describe — there's no async boundary to move
+    // the initial state reset past.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load(status);
   }, [status, load]);
 

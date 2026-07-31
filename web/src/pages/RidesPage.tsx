@@ -21,6 +21,7 @@ export function RidesPage() {
 
   const load = useCallback(() => {
     if (!accessToken) return;
+    setRides(null);
     setError(null);
     listRides(accessToken, {
       status: status || undefined,
@@ -32,7 +33,10 @@ export function RidesPage() {
   }, [accessToken, status, from, to]);
 
   useEffect(() => {
-    setRides(null);
+    // Fetching on mount and whenever a filter changes is the "synchronize with an external
+    // system" case React's own docs describe — there's no async boundary to move the
+    // initial state reset past.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
